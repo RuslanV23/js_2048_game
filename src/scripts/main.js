@@ -5,11 +5,23 @@ const Game = require('../modules/Game.class');
 const game = new Game([
   [2, 2, 0, 0],
   [0, 2, 0, 0],
-  [32, 16, 8, 8],
+  [0, 2, 4, 8],
   [0, 16, 0, 0],
 ]);
 
-game.start();
+const buttonStart = document.querySelector('.button.start');
+
+buttonStart.addEventListener('click', () => {
+  if (buttonStart.classList.contains('start')) {
+    game.start();
+
+    buttonStart.textContent = 'Restart';
+    buttonStart.classList.remove('start');
+    buttonStart.classList.add('restart');
+  } else {
+    game.restart();
+  }
+});
 
 // Write your code here
 
