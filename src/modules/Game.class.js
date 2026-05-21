@@ -71,7 +71,6 @@ class Game {
       });
 
       this.gameBoard.addEventListener('pointermove', (event2) => {
-
         if (this.getStatus() !== 'playing') {
           return;
         }
@@ -83,22 +82,22 @@ class Game {
         const moveX = event2.pageX - lastPosition.x;
         const moveY = event2.pageY - lastPosition.y;
 
-        if (moveX < -50) {
+        if (moveX < -40) {
           this.moveLeft();
           lastPosition = null;
         }
 
-        if (moveX > 50) {
+        if (moveX > 40) {
           this.moveRight();
           lastPosition = null;
         }
 
-        if (moveY > 50) {
+        if (moveY > 40) {
           this.moveDown();
           lastPosition = null;
         }
 
-        if (moveY < -50) {
+        if (moveY < -40) {
           this.moveUp();
           lastPosition = null;
         }
