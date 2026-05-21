@@ -71,6 +71,7 @@ class Game {
       });
 
       this.gameBoard.addEventListener('pointermove', (event2) => {
+
         if (this.getStatus() !== 'playing') {
           return;
         }
