@@ -8,6 +8,8 @@ body {
   font-family: sans-serif;
   font-size: 24px;
   font-weight: 900;
+
+
 }
 
 .game-board {
@@ -109,14 +111,19 @@ body {
       left 180ms cubic-bezier(0.52, 0.01, 0.27, 1.38),
       top 180ms cubic-bezier(0.52, 0.01, 0.27, 1.38),
       transform 180ms cubic-bezier(0.52, 0.01, 0.27, 1.38),
-      box-shadow 180ms ease;
+      box-shadow 180ms ease,
+      filter 180ms ease;
 
-    animation: apeare-cell 0.3s cubic-bezier(0.52, 0.01, 0.27, 1.38);
+    animation:
+      apeare-cell 0.3s cubic-bezier(0.52, 0.01, 0.27, 1.38),
+      apeare-cell-2 0.5s cubic-bezier(0.52, 0.01, 0.27, 1.38);
 
     box-shadow:
       0 10px 22px rgba(0, 0, 0, 0.35),
       inset 0 1px 0 rgba(255, 255, 255, 0.35),
       inset 0 -10px 20px rgba(0, 0, 0, 0.18);
+
+    filter: brightness(1);
 
     &--deactive {
       z-index: 0;
@@ -183,8 +190,18 @@ body {
 
 @keyframes apeare-cell {
   0% {
+    filter: drop-shadow(0 0 20px rgb(15, 227, 235));
     opacity: 0;
     transform: scale(0.01);
+  }
+}
+
+@keyframes apeare-cell-2 {
+  0% {
+    filter: drop-shadow(0 0 20px rgb(15, 227, 235));
+  }
+  100% {
+    filter: drop-shadow(0 0 0 transparent);
   }
 }
 
@@ -272,10 +289,10 @@ h1 {
 }
 
 .restart {
-  background: #f1b2b2;
+  background: #ff2828;
 
   &:hover {
-    background: #f87474;
+    background: #9b0505;
   }
 }
 

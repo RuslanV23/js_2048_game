@@ -2,12 +2,7 @@
 
 // Uncomment the next lines to use your game instance in the browser
 const Game = require('../modules/Game.class');
-const game = new Game([
-  [2, 2, 0, 0],
-  [0, 2, 0, 0],
-  [0, 2, 4, 8],
-  [0, 16, 0, 0],
-]);
+const game = new Game();
 
 const buttonStart = document.querySelector('.button.start');
 

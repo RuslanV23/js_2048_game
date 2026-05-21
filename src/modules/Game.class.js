@@ -30,6 +30,82 @@ class Game {
       [0, 0, 0, 0],
     ],
   ) {
+    this.gameBoard = document.querySelector('.game-board');
+
+    this.handleKeyDown = (event2) => {
+      switch (event2.code) {
+        case 'ArrowDown':
+        case 'KeyS':
+          this.moveDown();
+          break;
+
+        case 'ArrowUp':
+        case 'KeyW':
+          this.moveUp();
+          break;
+
+        case 'ArrowRight':
+        case 'KeyD':
+          this.moveRight();
+          break;
+
+        case 'ArrowLeft':
+        case 'KeyA':
+          this.moveLeft();
+          break;
+
+        default:
+          break;
+      }
+    };
+
+    const poinerEvent = () => {
+      let lastPosition = null;
+
+      this.gameBoard.addEventListener('pointerdown', (event2) => {
+        lastPosition = { x: event2.pageX, y: event2.pageY };
+      });
+
+      this.gameBoard.addEventListener('pointerup', (event2) => {
+        lastPosition = null;
+      });
+
+      this.gameBoard.addEventListener('pointermove', (event2) => {
+        if (this.getStatus() !== 'playing') {
+          return;
+        }
+
+        if (!lastPosition) {
+          return;
+        }
+
+        const moveX = event2.pageX - lastPosition.x;
+        const moveY = event2.pageY - lastPosition.y;
+
+        if (moveX < -50) {
+          this.moveLeft();
+          lastPosition = null;
+        }
+
+        if (moveX > 50) {
+          this.moveRight();
+          lastPosition = null;
+        }
+
+        if (moveY > 50) {
+          this.moveDown();
+          lastPosition = null;
+        }
+
+        if (moveY < -50) {
+          this.moveUp();
+          lastPosition = null;
+        }
+      });
+    };
+
+    poinerEvent();
+
     /** @type {'idle' | 'playing' | 'win' | 'lose'} */
     this.status = 'idle';
     this.initialState = initialState;
@@ -47,7 +123,9 @@ class Game {
     this.setMessage('start');
   }
 
-  setInitialFild() {
+  setInitialFilds() {
+    this.setStatus('playing');
+
     [...this.cellElements.children].forEach((child) => {
       child.remove();
     });
@@ -58,15 +136,60 @@ class Game {
         return Array(this.initialState[0].length).fill(null);
       });
 
+    if (
+      this.initialState.every((row) => {
+        return row.every((cell) => cell === 0);
+      })
+    ) {
+      this.createRandomCell();
+      this.createRandomCell();
+
+      return;
+    }
+
     this.initialState.forEach((row, y) => {
       row.forEach((cellValue, x) => {
         if (cellValue === 0) {
           return;
         }
-        this.state[y][x] = new Cell([y, x], cellValue);
+
+        const newCell = new Cell({ y, x }, cellValue);
+
+        this.setCell({ y, x }, newCell);
         this.cellElements.append(this.state[y][x].element);
       });
     });
+
+    if (!this.haveFreeMove()) {
+      this.gameOver();
+    }
+
+    this.state.forEach((row) => {
+      row.forEach((cell) => {
+        if (cell && cell.value >= 2048) {
+          this.win();
+        }
+      });
+    });
+  }
+
+  createRandomCell() {
+    const emptyFilds = this.getEmptyField();
+
+    if (emptyFilds.length === 0) {
+      return;
+    }
+
+    const randomPosition =
+      emptyFilds[Math.round(Math.random() * (emptyFilds.length - 1))];
+
+    const randomValue = Math.random() > 0.1 ? 2 : 4;
+
+    const newCell = new Cell(randomPosition, randomValue);
+
+    this.cellElements.append(newCell.element);
+
+    this.setCell(randomPosition, newCell);
   }
 
   getCell({ x, y }) {
@@ -79,7 +202,7 @@ class Game {
 
   moveLeft() {
     for (let y = 0; y < this.sizeFiled.y; y++) {
-      const mergeCells = [];
+      const mergedCells = [];
 
       for (let x = 0; x < this.sizeFiled.x; x++) {
         const currentCell = this.getCell({ y, x });
@@ -101,7 +224,7 @@ class Game {
 
           if (
             nextCell.value === currentCell.value &&
-            !mergeCells.includes(nextCell)
+            !mergedCells.includes(nextCell)
           ) {
             nextPositionX--;
             mergeCell = nextCell;
@@ -111,18 +234,7 @@ class Game {
         }
 
         if (mergeCell) {
-          currentCell.element.classList.add('game-board__cell--deactive');
-          mergeCells.push(mergeCell);
-          mergeCell.setValue(mergeCell.value * 2);
-
-          this.setCell({ y, x }, null);
-
-          currentCell.setPosition([y, nextPositionX]);
-
-          setTimeout(() => {
-            currentCell.element.remove();
-          }, 180);
-          this.setScore(this.getScore() + mergeCell.value);
+          this.mergeCells({ currentCell, mergeCell, mergedCells });
 
           continue;
         }
@@ -131,16 +243,24 @@ class Game {
           continue;
         }
 
-        this.setCell({ y, x }, null);
-        this.setCell({ y, x: nextPositionX }, currentCell);
-        currentCell.setPosition([y, nextPositionX]);
+        const nextPosition = { y, x: nextPositionX };
+
+        this.setCell(currentCell.getPosition(), null);
+        this.setCell(nextPosition, currentCell);
+        currentCell.setPosition(nextPosition);
       }
+    }
+
+    this.createRandomCell();
+
+    if (!this.haveFreeMove()) {
+      this.gameOver();
     }
   }
 
   moveRight() {
     for (let y = 0; y < this.sizeFiled.y; y++) {
-      const mergeCells = [];
+      const mergedCells = [];
 
       for (let x = this.sizeFiled.x - 1; x >= 0; x--) {
         const currentCell = this.getCell({ y, x });
@@ -162,7 +282,7 @@ class Game {
 
           if (
             nextCell.value === currentCell.value &&
-            !mergeCells.includes(nextCell)
+            !mergedCells.includes(nextCell)
           ) {
             nextPositionX++;
             mergeCell = nextCell;
@@ -172,19 +292,7 @@ class Game {
         }
 
         if (mergeCell) {
-          currentCell.element.classList.add('game-board__cell--deactive');
-
-          mergeCells.push(mergeCell);
-          mergeCell.setValue(mergeCell.value * 2);
-
-          this.setCell({ y, x }, null);
-
-          currentCell.setPosition([y, nextPositionX]);
-
-          setTimeout(() => {
-            currentCell.element.remove();
-          }, 180);
-          this.setScore(this.getScore() + mergeCell.value);
+          this.mergeCells({ currentCell, mergeCell, mergedCells });
 
           continue;
         }
@@ -193,16 +301,24 @@ class Game {
           continue;
         }
 
-        this.setCell({ y, x }, null);
-        this.setCell({ y, x: nextPositionX }, currentCell);
-        currentCell.setPosition([y, nextPositionX]);
+        const nextPosition = { y, x: nextPositionX };
+
+        this.setCell(currentCell.getPosition(), null);
+        this.setCell(nextPosition, currentCell);
+        currentCell.setPosition(nextPosition);
       }
+    }
+
+    this.createRandomCell();
+
+    if (!this.haveFreeMove()) {
+      this.gameOver();
     }
   }
 
   moveUp() {
     for (let x = 0; x < this.sizeFiled.x; x++) {
-      const mergeCells = [];
+      const mergedCells = [];
 
       for (let y = 0; y < this.sizeFiled.y; y++) {
         const currentCell = this.getCell({ y, x });
@@ -224,7 +340,7 @@ class Game {
 
           if (
             nextCell.value === currentCell.value &&
-            !mergeCells.includes(nextCell)
+            !mergedCells.includes(nextCell)
           ) {
             nextPositionX--;
             mergeCell = nextCell;
@@ -234,18 +350,7 @@ class Game {
         }
 
         if (mergeCell) {
-          mergeCells.push(mergeCell);
-          mergeCell.setValue(mergeCell.value * 2);
-          this.setCell({ y, x }, null);
-
-          currentCell.element.classList.add('game-board__cell--deactive');
-          currentCell.setPosition([nextPositionX, x]);
-
-          setTimeout(() => {
-            currentCell.element.remove();
-          }, 180);
-          this.setScore(this.getScore() + mergeCell.value);
-
+          this.mergeCells({ currentCell, mergeCell, mergedCells });
           continue;
         }
 
@@ -253,16 +358,24 @@ class Game {
           continue;
         }
 
-        this.setCell({ y, x }, null);
-        this.setCell({ x, y: nextPositionX }, currentCell);
-        currentCell.setPosition([nextPositionX, x]);
+        const nextPosition = { x, y: nextPositionX };
+
+        this.setCell(currentCell.getPosition(), null);
+        this.setCell(nextPosition, currentCell);
+        currentCell.setPosition(nextPosition);
       }
+    }
+
+    this.createRandomCell();
+
+    if (!this.haveFreeMove()) {
+      this.gameOver();
     }
   }
 
   moveDown() {
     for (let x = 0; x < this.sizeFiled.x; x++) {
-      const mergeCells = [];
+      const mergedCells = [];
 
       for (let y = this.sizeFiled.y - 1; y >= 0; y--) {
         const currentCell = this.getCell({ y, x });
@@ -284,7 +397,7 @@ class Game {
 
           if (
             nextCell.value === currentCell.value &&
-            !mergeCells.includes(nextCell)
+            !mergedCells.includes(nextCell)
           ) {
             nextPositionX++;
             mergeCell = nextCell;
@@ -294,18 +407,7 @@ class Game {
         }
 
         if (mergeCell) {
-          mergeCells.push(mergeCell);
-          mergeCell.setValue(mergeCell.value * 2);
-          this.setCell({ y, x }, null);
-
-          currentCell.element.classList.add('game-board__cell--deactive');
-          currentCell.setPosition([nextPositionX, x]);
-
-          setTimeout(() => {
-            currentCell.element.remove();
-          }, 180);
-
-          this.setScore(this.getScore() + mergeCell.value);
+          this.mergeCells({ currentCell, mergeCell, mergedCells });
           continue;
         }
 
@@ -313,33 +415,37 @@ class Game {
           continue;
         }
 
-        this.setCell({ y, x }, null);
-        this.setCell({ x, y: nextPositionX }, currentCell);
-        currentCell.setPosition([nextPositionX, x]);
+        const nextPosition = { x, y: nextPositionX };
+
+        this.setCell(currentCell.getPosition(), null);
+        this.setCell(nextPosition, currentCell);
+        currentCell.setPosition(nextPosition);
       }
+    }
+
+    this.createRandomCell();
+
+    if (!this.haveFreeMove()) {
+      this.gameOver();
     }
   }
 
-  mergeCells({
-    currentCell,
-    mergeCell,
-    currentCoords,
-    targetPosition,
-    mergedCells,
-  }) {
+  mergeCells({ currentCell, mergeCell, mergedCells }) {
     currentCell.element.classList.add('game-board__cell--deactive');
-
-    mergedCells.add(mergeCell);
+    mergedCells.push(mergeCell);
     mergeCell.setValue(mergeCell.value * 2);
+    this.setScore(this.getScore() + mergeCell.value);
+    this.setCell(currentCell.getPosition(), null);
 
-    this.setCell(currentCoords, null);
-    currentCell.setPosition(targetPosition);
+    currentCell.setPosition(mergeCell.getPosition());
+
+    if (mergeCell.value * 2 >= 2048) {
+      this.win();
+    }
 
     setTimeout(() => {
       currentCell.element.remove();
     }, 180);
-
-    this.setScore(this.getScore() + mergeCell.value);
   }
 
   /**
@@ -375,7 +481,36 @@ class Game {
     return this.status;
   }
 
-  gameOver() {}
+  gameOver() {
+    this.setStatus('lose');
+    document.removeEventListener('keydown', this.handleKeyDown);
+  }
+
+  haveFreeMove() {
+    if (this.getEmptyField().length !== 0) {
+      return true;
+    }
+
+    for (let x = 0; x < this.sizeFiled.x; x++) {
+      for (let y = 1; y < this.sizeFiled.y; y++) {
+        if (
+          this.getCell({ x, y }).value === this.getCell({ x, y: y - 1 }).value
+        ) {
+          return true;
+        }
+      }
+    }
+
+    for (let y = 0; y < this.sizeFiled.y; y++) {
+      for (let x = 1; x < this.sizeFiled.x; x++) {
+        if (
+          this.getCell({ x, y }).value === this.getCell({ x: x - 1, y }).value
+        ) {
+          return true;
+        }
+      }
+    }
+  }
 
   /**
    * @param {'start' | 'lose' | 'win' | null} message
@@ -418,12 +553,17 @@ class Game {
     this.getState().forEach((row, indexY) => {
       row.forEach((cell, indexX) => {
         if (!cell) {
-          emptyFild.push([indexY, indexX]);
+          emptyFild.push({ y: indexY, x: indexX });
         }
       });
     });
 
     return emptyFild;
+  }
+
+  win() {
+    this.setStatus('win');
+    document.removeEventListener('keydown', this.handleKeyDown);
   }
 
   /**
@@ -433,51 +573,25 @@ class Game {
     if (this.getStatus() !== 'idle') {
       return;
     }
+    document.addEventListener('keydown', this.handleKeyDown);
 
     this.setStatus('playing');
-    this.setInitialFild();
-
-    document.addEventListener('keydown', (event2) => {
-      switch (event2.code) {
-        case 'ArrowDown':
-        case 'KeyS':
-          this.moveDown();
-          break;
-
-        case 'ArrowUp':
-        case 'KeyW':
-          this.moveUp();
-          break;
-
-        case 'ArrowRight':
-        case 'KeyD':
-          this.moveRight();
-          break;
-
-        case 'ArrowLeft':
-        case 'KeyA':
-          this.moveLeft();
-          break;
-
-        default:
-          break;
-      }
-
-      // console.log(this.getState());
-    });
+    this.setInitialFilds();
   }
 
   /**
    * Resets the game.
    */
   restart() {
-    if (this.getStatus() !== 'playing') {
+    if (this.getStatus() === 'idle') {
       return;
     }
-    this.setInitialFild();
+    this.setInitialFilds();
     this.setScore(0);
-  }
 
+    document.removeEventListener('keydown', this.handleKeyDown);
+    document.addEventListener('keydown', this.handleKeyDown);
+  }
   // Add your own methods here
 }
 
